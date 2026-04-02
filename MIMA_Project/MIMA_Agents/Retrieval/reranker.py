@@ -15,6 +15,7 @@ class CrossEncoderReranker:
             return []
         scores = self.model.predict(pairs)
         reranked: list[RetrievalResult] = []
+        # zip pair each candidate(element) with its new score
         for item, score in zip(candidates, scores):
             reranked.append(
                 RetrievalResult(
