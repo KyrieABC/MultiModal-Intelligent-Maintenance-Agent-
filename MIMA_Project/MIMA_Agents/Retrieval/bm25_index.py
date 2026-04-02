@@ -10,6 +10,7 @@ class BM25Retriever:
         # .split() break texts into words using space
         self.corpus_tokens= [chunk.text.lower().split() for chunk in chunks]
         # BM250kapi builds a lexical retrieval model over your chunk texts
+        # Keyword matching
         self.index = BM25Okapi(self.corpus_tokens)
     
     def search(self, query: str, top_k: int = 8) -> list[RetrievalResult]:
