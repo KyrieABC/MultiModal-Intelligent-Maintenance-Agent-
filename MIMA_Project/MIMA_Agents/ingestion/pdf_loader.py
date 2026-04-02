@@ -36,6 +36,7 @@ def load_manual_documents(manual_dir: Path) -> list[ManualChunk]:
         # Convert insert value to string
         # In this case: %s is for pdf.name
         logger.info("Loading manual: %s", pdf.name)
+        # Might want to consider add chunk_size, otherwise it might go out of bounce. 
         for page_num,page_text in extract_text_from_pdf(pdf):
             chunks = chunk_text(
                 text=page_text,
