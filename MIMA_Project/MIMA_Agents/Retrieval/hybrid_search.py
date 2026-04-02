@@ -25,7 +25,9 @@ class HybridRetriever:
         scores: dict[str, float] = defaultdict(float)
 
         for rank, item in enumerate(bm25_results, start=1):
+            # Store the chunk (deduplicate automatically)
             merged[item.chunk.chunk_id] = item
+            # RRF formula (k=50, constant to smooth scores) Higher rank -> Higher contribution with smooth difference
             scores[item.chunk.chunk_id] += 1.0 / (50 + rank)
 
         for rank, item in enumerate(vector_results, start=1):
