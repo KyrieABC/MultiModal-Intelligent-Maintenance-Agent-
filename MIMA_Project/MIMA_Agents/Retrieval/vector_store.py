@@ -27,6 +27,7 @@ class InMemoryVectorStore:
         self.chunks = chunks
         self.embedder = embedder
         vectors = self.embedder.embed_texts([c.text for c in chunks])
+        # Store the chunks as a ManualChunk object and its corresponding text embeddings as a list of float numbers
         self.records = [VectorRecord(chunk=c, embedding=v) for c, v in zip(chunks, vectors)]
 
     @staticmethod
@@ -38,8 +39,10 @@ class InMemoryVectorStore:
         q = np.array(self.embedder.embed_query(query), dtype=float)
         scored: list[RetrievalResult] = []
         for record in self.records:
+            # Calculate the cosine similarity between the query and the each embedding from each text chunk
             score = self._cosine(q, np.array(record.embedding, dtype=float))
             scored.append(RetrievalResult(chunk=record.chunk, score=score, retrieval_source="vector"))
+        # rank them by similarity score
         scored.sort(key=lambda x: x.score, reverse=True)
         return scored[:top_k]
 
@@ -51,16 +54,23 @@ class PineconeVectorStore:
 
         self.chunks_by_id = {chunk.chunk_id: chunk for chunk in chunks}
         self.embedder = embedder
+        # create a pinecone client object
         self.pc = Pinecone(api_key=settings.pinecone_api_key)
         self.index_name = settings.pinecone_index_name
 
+        # asks Pinecone for list of indexes already in your account
         existing = {idx["name"] for idx in self.pc.list_indexes()}
+        # create the index if not exist
         if self.index_name not in existing:
+            # Use the dimensionality of the size of embedding of text "maintenance diagnostics"
             dim = len(self.embedder.embed_query("maintenance diagnostics"))
+            # Create Pinecone index with these settings
             self.pc.create_index(
                 name=self.index_name,
                 dimension=dim,
+                # How similarity is measured
                 metric="cosine",
+                # Defines how Pinecone should host the index
                 spec=ServerlessSpec(cloud=settings.pinecone_cloud, region=settings.pinecone_region),
             )
 
@@ -86,11 +96,32 @@ class PineconeVectorStore:
 
     def search(self, query: str, top_k: int = 8) -> list[RetrievalResult]:
         vector = self.embedder.embed_query(query)
+        # Perform actual semantic search:
+        """
+        Pinecone compares your query vector with all stored vectors
+        Use cosine similarity
+        return the most similar ones
+        """
         response = self.index.query(vector=vector, top_k=top_k, include_metadata=True)
         results: list[RetrievalResult] = []
+        # Each match is:
+        """
+        {
+            "id": "chunk123",
+            "score": 0.91,
+            "metadata": {
+                "text": "...",
+                "source": "...",
+                "page": 5
+            }
+        }
+        """
         for match in response.get("matches", []):
+            # Try to retrieve the original ManualChunk object from memory (where you stored locally: chunk = self.chunks_by_id.get(match["id"]))
             chunk = self.chunks_by_id.get(match["id"])
+            # If not found (fallback): chunk wasn't stored locally or querying acrossing session
             if chunk is None:
+                # Then re-build it
                 metadata = match.get("metadata", {})
                 chunk = ManualChunk(
                     chunk_id=match["id"],
