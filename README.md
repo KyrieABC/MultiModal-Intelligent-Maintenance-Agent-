@@ -105,6 +105,7 @@ python app.py \
 
 - This implementation is built to be **portfolio-ready** and modular.
 - Some production integrations are implemented as **clean adapters** with graceful fallbacks.
-- Pinecone, Phoenix, and external web search are optional but the code paths are prepared for them.
+- I applied fork currently
+
 
 
